@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="グラブル古戦場の達成段階を選ぶだけで獲得勲章数を計算し、欲しい交換品から足りない数を逆算できる非公式ツール。">
+<title>古戦場 勲章計算機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+body{margin:0}[hidden]{display:none!important}img{max-width:100%}
+
+:root{
+  --bg:#EEF2F7; --surface:#FFFFFF; --surface-2:#F5F7FB; --line:#D5DCE7; --line-strong:#B4BFCF;
+  --ink:#16213A; --ink-2:#4A5670; --ink-3:#6F7A92;
+  --gold:#A87A1E; --gold-soft:#F4E7C8; --gold-ink:#6E4E0E;
+  --sky:#2A63A8; --sky-soft:#DDE8F5;
+  --win:#227A4F; --win-soft:#DDF0E5; --lose:#B23C3C; --lose-soft:#F6E0E0;
+  --team:#7A4FB0; --team-soft:#ECE3F7;
+  --shadow:0 1px 2px rgba(22,33,58,.06),0 6px 20px rgba(22,33,58,.06);
+  --f-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1526; --surface:#162038; --surface-2:#1B2742; --line:#2A3858; --line-strong:#3C4D73;
+    --ink:#E6EBF5; --ink-2:#AEB8CD; --ink-3:#8793AD;
+    --gold:#E0B252; --gold-soft:#3A3020; --gold-ink:#F2D08A;
+    --sky:#7FB0EC; --sky-soft:#1E3152;
+    --win:#5CC28F; --win-soft:#17362A; --lose:#EB7B7B; --lose-soft:#3F2026;
+    --team:#B894E8; --team-soft:#2E2445;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1526; --surface:#162038; --surface-2:#1B2742; --line:#2A3858; --line-strong:#3C4D73;
+  --ink:#E6EBF5; --ink-2:#AEB8CD; --ink-3:#8793AD;
+  --gold:#E0B252; --gold-soft:#3A3020; --gold-ink:#F2D08A;
+  --sky:#7FB0EC; --sky-soft:#1E3152;
+  --win:#5CC28F; --win-soft:#17362A; --lose:#EB7B7B; --lose-soft:#3F2026;
+  --team:#B894E8; --team-soft:#2E2445;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6;padding:24px 16px 96px}
+.wrap{max-width:1160px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,4vw,36px);line-height:1.2;margin:0;letter-spacing:.02em;text-wrap:balance}
+h1 .medal{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#F7DE9A,var(--gold) 60%,#7A5410);vertical-align:-.02em;margin-right:.3em;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.lede{color:var(--ink-2);margin:6px 0 0;max-width:62ch}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500}
+.btn:hover{border-color:var(--sky);color:var(--sky)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.seg button:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+
+section.panel,.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+.col{display:grid;gap:16px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;margin-bottom:12px;flex-wrap:wrap}
+.head-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+h2{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0;letter-spacing:.03em}
+.sub{font-family:var(--f-num);font-size:13px;color:var(--gold-ink);background:var(--gold-soft);padding:1px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--ink-3);margin:10px 0 0}
+
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+label.field{display:grid;gap:4px}
+.field > span{font-size:12px;color:var(--ink-2);font-weight:500;letter-spacing:.02em}
+input[type=text],select{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[type=text]{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:15px}
+
+.days{display:grid;gap:8px}
+.day,.day-head{display:grid;grid-template-columns:54px 88px 100px minmax(0,1fr) 82px 58px;gap:10px;align-items:center}
+.day{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.day-head{padding:0 10px;font-size:11px;color:var(--ink-3)}
+.day-head span:last-child{text-align:right}
+.dname{font-family:var(--f-display);font-weight:700;font-size:15px}
+.got{font-family:var(--f-num);font-weight:600;font-size:17px;text-align:right;font-variant-numeric:tabular-nums;color:var(--gold-ink)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.chk input{width:16px;height:16px;accent-color:var(--gold);margin:0}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--surface);color:var(--ink-2);padding:7px 0;font-weight:700;font-size:13px}
+.seg button + button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"].w{background:var(--win-soft);color:var(--win)}
+.seg button[aria-pressed="true"].l{background:var(--lose-soft);color:var(--lose)}
+@media (max-width:660px){
+  .day-head{display:none}
+  .day{grid-template-columns:1fr 1fr}
+  .day .tier{grid-column:1 / -1}
+}
+
+.summary{display:grid;gap:16px}
+.total .label{font-size:12px;color:var(--ink-2);letter-spacing:.08em}
+.total .big{font-family:var(--f-num);font-weight:600;font-size:56px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.total .big small{font-family:var(--f-body);font-size:16px;color:var(--ink-2);font-weight:500;margin-left:4px}
+.total .max{font-size:12px;color:var(--ink-3)}
+.meter{height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin:10px 0 14px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#E9C46A);width:0;transition:width .3s}
+dl.break{margin:0;display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px}
+dl.break dt{color:var(--ink-2)}
+dl.break dd{margin:0;font-family:var(--f-num);font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+dl.break .sep{grid-column:1 / -1;border-top:1px dashed var(--line);margin:2px 0}
+
+.picks{display:grid;gap:6px;margin-top:10px}
+.pick{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:7px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer}
+.pick input{width:16px;height:16px;accent-color:var(--gold);margin:0}
+.pick .n{font-weight:500;font-size:13px}
+.pick .c{font-family:var(--f-num);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.pick:has(input:checked){border-color:var(--gold);background:var(--gold-soft)}
+.pick:has(input:checked) .c{color:var(--gold-ink)}
+
+.goal{margin-top:14px;padding:12px;border-radius:10px;border:1px solid var(--line)}
+.goal.ok{background:var(--win-soft);border-color:color-mix(in srgb,var(--win) 40%,transparent)}
+.goal.ng{background:var(--lose-soft);border-color:color-mix(in srgb,var(--lose) 35%,transparent)}
+.goal.none{background:var(--surface-2)}
+.goal .g-top{font-weight:700;font-size:15px}
+.goal.ok .g-top{color:var(--win)}
+.goal.ng .g-top{color:var(--lose)}
+.goal .g-sub{font-size:12px;color:var(--ink-2);font-family:var(--f-num);font-variant-numeric:tabular-nums;margin-top:2px}
+
+.route{display:grid;gap:6px}
+.step{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.step .tag{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.tag.me{background:var(--sky-soft);color:var(--sky)}
+.tag.both{background:var(--gold-soft);color:var(--gold-ink)}
+.tag.team{background:var(--team-soft);color:var(--team)}
+.step .what{font-size:13px;min-width:0}
+.step .what small{display:block;color:var(--ink-3);font-size:11px}
+.step .gain{font-family:var(--f-num);font-weight:600;color:var(--gold-ink);font-variant-numeric:tabular-nums}
+.step .cum{font-family:var(--f-num);font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums;min-width:52px;text-align:right}
+.step.reach{border-color:var(--win)}
+.step.reach .cum{color:var(--win);font-weight:600}
+.step.after{opacity:.6}
+.route-msg{font-size:13px;color:var(--ink-2);margin:0 0 10px}
+.route-msg b{color:var(--win)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--ink-3)}
+.legend .tag{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px}
+
+.note{font-size:12px;color:var(--ink-3);margin-top:20px;max-width:78ch}
+.note a{color:var(--sky)}
+.flag{font-size:12px;background:var(--sky-soft);color:var(--sky);border-radius:8px;padding:6px 10px;margin-bottom:14px}
+.mbar{display:none}
+@media (max-width:900px){
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);justify-content:space-between;align-items:center;z-index:5;box-shadow:0 -4px 16px rgba(0,0,0,.08);gap:12px}
+  .mbar b{font-family:var(--f-num);font-size:22px;color:var(--gold)}
+  .mbar span{font-size:12px;color:var(--ink-2)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1><span class="medal" aria-hidden="true"></span>古戦場 勲章計算機</h1>
+      <p class="lede">達成した報酬の段階を選ぶだけで、1回の古戦場で獲得できる勲章数を計算します。欲しい交換品を選ぶと、足りない分とそこまでの近道も表示します。</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="btn-min" type="button" title="Cクラス全敗で、各報酬の最低条件だけを満たした場合">最小獲得の例</button>
+      <button class="btn" id="btn-max" type="button" title="Aクラス全勝で、すべての報酬条件を満たした場合">最大獲得の例</button>
+      <button class="btn" id="btn-reset" type="button">すべてクリア</button>
+    </div>
+  </header>
+
+  <div class="flag" id="flag">サンプル値が入っています。自分の結果に合わせて選び直してください（選んだ内容はこのブラウザに保存されます）。</div>
+
+  <div class="layout">
+    <div class="col">
+      <section class="panel" aria-labelledby="h-yosen">
+        <div class="panel-head"><h2 id="h-yosen">予選</h2><span class="sub" id="s-yosen">0個</span></div>
+        <div class="grid3">
+          <label class="field"><span>個人貢献度</span><select id="y-me"></select></label>
+          <label class="field"><span>騎空団貢献度</span><select id="y-team"></select></label>
+          <label class="field"><span>予選騎空団ランキング</span><select id="y-rank"></select></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-honsen">
+        <div class="panel-head"><h2 id="h-honsen">本戦</h2>
+          <div class="head-tools">
+            <button class="btn sm" id="btn-allw" type="button">全勝</button>
+            <button class="btn sm" id="btn-alll" type="button">全敗</button>
+            <button class="btn sm" id="btn-alltop" type="button">全日 最上段</button>
+            <button class="btn sm" id="btn-copy" type="button">1日目を全日にコピー</button>
+            <span class="sub" id="s-honsen">0個</span>
+          </div>
+        </div>
+        <div class="day-head" aria-hidden="true"><span>日</span><span>クラス</span><span>勝敗</span><span>達成した段階</span><span>日別報酬</span><span>勲章</span></div>
+        <div class="days" id="days"></div>
+        <p class="hint">「達成した段階」は、騎空団と個人の貢献度が両方届いた一番上の段階を選びます。日別報酬は、その日の個人貢献度が40万に届くと勲章5個です。</p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-rank">
+        <div class="panel-head"><h2 id="h-rank">最終ランキング</h2><span class="sub" id="s-rank">0個</span></div>
+        <div class="grid3">
+          <label class="field"><span>個人ランキング</span><select id="r-me"></select></label>
+          <label class="field"><span>総合騎空団ランキング</span><select id="r-team"></select></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-route">
+        <div class="panel-head"><h2 id="h-route">目標までの近道</h2>
+          <div class="legend"><span class="tag me">個人</span>自分の頑張りで届く <span class="tag both">団＋個人</span>団の結果も必要 <span class="tag team">団</span>団の結果次第</div>
+        </div>
+        <p class="route-msg" id="route-msg"></p>
+        <div class="route" id="route"></div>
+      </section>
+    </div>
+
+    <aside class="summary">
+      <div class="card total">
+        <div class="label">獲得勲章 合計</div>
+        <div class="big"><span id="t-total">0</span><small>個</small></div>
+        <div class="max">通常の最大 535個（日別報酬を除く）</div>
+        <div class="meter"><i id="t-meter"></i></div>
+        <dl class="break" id="t-break"></dl>
+      </div>
+      <div class="card">
+        <div class="panel-head" style="margin-bottom:8px"><h2>目標</h2><button class="btn sm" id="btn-unpick" type="button">選択を解除</button></div>
+        <div class="grid3" style="grid-template-columns:1fr 1fr">
+          <label class="field"><span>いまの所持勲章</span><input type="text" inputmode="numeric" id="have" autocomplete="off" placeholder="0"></label>
+          <label class="field"><span>ほかに必要な数</span><input type="text" inputmode="numeric" id="extra" autocomplete="off" placeholder="0"></label>
+        </div>
+        <div class="picks" id="picks"></div>
+        <div class="goal none" id="goal"><div class="g-top" id="g-top"></div><div class="g-sub" id="g-sub"></div></div>
+      </div>
+    </aside>
+  </div>
+
+  <p class="note">このサイトは非公式のファンツールで、Cygames とは関係ありません。 条件は2026年9月の光有利古戦場時点の攻略情報（<a href="https://kamigame.jp/%E3%82%B0%E3%83%A9%E3%83%96%E3%83%AB/%E6%B1%BA%E6%88%A6%EF%BC%81%E6%98%9F%E3%81%AE%E5%8F%A4%E6%88%A6%E5%A0%B4/%E5%8B%B2%E7%AB%A0.html" target="_blank" rel="noopener">神ゲー攻略</a>ほか）をもとにしています。報酬条件は回によって変わることがあるので、最終的にはゲーム内のお知らせで確認してください。近道の一覧は、今の選択からそれぞれ1段階だけ上げた場合の増加量です。<br>© Cygames, Inc.（ゲーム内の名称・データの権利）</p>
+</div>
+
+<div class="mbar" aria-hidden="true"><span>合計</span><b id="m-total">0</b><span id="m-goal"></span></div>
+
+<script>
+(function(){
+  const MAN = n => n>=1e8 ? (n/1e8)+"億" : n>=1e4 ? (n/1e4).toLocaleString()+"万" : n.toLocaleString();
+  // 本戦 [騎空団, 個人, 勲章]
+  const MAIN = {
+    A:{w:[[0,3e5,60],[1e9,1e7,10]],
+       l:[[1e7,1e6,25],[1e8,2.5e6,5],[1.5e8,3.5e6,5],[2.5e8,6e6,5],[1e9,3e7,10],[3e9,9e7,10]]},
+    B:{w:[[0,2e5,25],[3.5e7,3.6e5,5],[5e7,4.8e5,5]],
+       l:[[5e6,5e5,10],[3.5e7,9e5,5],[5e7,1.2e6,5]]},
+    C:{w:[[0,1e5,10],[5e6,1.6e5,5]],
+       l:[[1.8e6,1.5e5,5],[5e6,4e5,5]]}
+  };
+  const YME = [0,1200,2500,12000,25000];
+  const YTEAM = [0,22000,45000];
+  const YRANK = [["300位以内",45],["301〜1,000位",25],["1,001〜9,000位",25],["9,001〜19,000位",10],["19,001〜36,000位",5],["36,001位以下",0]];
+  const RME = [["100,000位以内",110],["100,001〜150,000位",85],["150,001〜200,000位",60],["200,001〜270,000位",35],["270,001位以下（個人300万以上）",10],["対象外",0]];
+  const RTEAM = [["2,500位以内",70],["2,501〜5,500位",60],["5,501〜9,000位",60],["9,001〜14,000位",35],["14,001〜18,000位",30],["18,001〜30,000位",15],["30,001位以下",10],["対象外",0]];
+  const EX = [
+    ["kongo","金剛晶セット",275],["sephira","セフィラ玉髄セット",500],["tenka","天醒の蒼玉",300],["hekirei","碧麗の証",300],
+    ["hihi","ヒヒイロカネセット",450],["teiri","定理の刻刀セット",500],["sand","刻の流砂",100]
+  ];
+  const MAX = 535;
+
+  const $ = id => document.getElementById(id);
+  const opts = (sel, list) => { sel.innerHTML = list.map((t,i)=>`<option value="${i}">${t}</option>`).join(""); };
+
+  opts($("y-me"), YME.map((v,i)=> i===0 ? "1,200未満" : v.toLocaleString()+"以上"));
+  opts($("y-team"), YTEAM.map((v,i)=> i===0 ? "22,000未満" : v.toLocaleString()+"以上"));
+  opts($("y-rank"), YRANK.map(([t,m])=>`${t}（${m}個）`));
+  opts($("r-me"), RME.map(([t,m])=>`${t}（${m}個）`));
+  opts($("r-team"), RTEAM.map(([t,m])=>`${t}（${m}個）`));
+
+  const daysEl = $("days");
+  for(let i=0;i<4;i++){
+    const d=document.createElement("div"); d.className="day";
+    d.innerHTML=`
+      <div class="dname">${i+1}日目</div>
+      <select id="d${i}-cls" aria-label="${i+1}日目のクラス"><option value="A">Aクラス</option><option value="B">Bクラス</option><option value="C">Cクラス</option></select>
+      <div class="seg" role="group" aria-label="${i+1}日目の勝敗"><button type="button" class="w" data-day="${i}" data-r="w">勝利</button><button type="button" class="l" data-day="${i}" data-r="l">敗北</button></div>
+      <select class="tier" id="d${i}-tier" aria-label="${i+1}日目の達成段階"></select>
+      <label class="chk"><input type="checkbox" id="d${i}-daily">40万</label>
+      <div class="got" id="d${i}-got">0</div>`;
+    daysEl.appendChild(d);
+  }
+
+  $("picks").innerHTML = EX.map(([id,n,c])=>`<label class="pick"><input type="checkbox" id="pk-${id}" data-cost="${c}"><span class="n">${n}</span><span class="c">${c}個</span></label>`).join("");
+
+  function tierLabel(t,k){ const [team,me,m]=t; return team ? `団${MAN(team)}＋個人${MAN(me)}` : `個人${MAN(me)}`; }
+  function fillTiers(i, st){
+    const d=st.days[i], tiers=MAIN[d.cls][d.r];
+    if(d.tier>tiers.length) d.tier=tiers.length;
+    let cum=0;
+    const list=["未達成（0個）"].concat(tiers.map(t=>{cum+=t[2]; return `${tierLabel(t)}（計${cum}個）`;}));
+    const sel=$(`d${i}-tier`); opts(sel,list); sel.value=d.tier;
+  }
+
+  // ---- state ----
+  const day = (cls,r,tier,daily)=>({cls,r,tier,daily});
+  const SAMPLE={y:{me:4,team:2,rank:2},days:[day("A","w",1,true),day("A","l",4,true),day("A","w",2,true),day("A","w",1,true)],r:{me:1,team:3},have:"180",extra:"",picks:["kongo"]};
+  const MAXSET={y:{me:4,team:2,rank:0},days:[0,1,2,3].map(()=>day("A","w",2,true)),r:{me:0,team:0},have:"",extra:"",picks:[]};
+  const MINSET={y:{me:3,team:1,rank:5},days:[0,1,2,3].map(()=>day("C","l",1,false)),r:{me:5,team:6},have:"",extra:"",picks:[]};
+  const EMPTY={y:{me:0,team:0,rank:5},days:[0,1,2,3].map(()=>day("A","w",0,false)),r:{me:5,team:7},have:"",extra:"",picks:[]};
+  let S = JSON.parse(JSON.stringify(SAMPLE));
+
+  function calc(st){
+    const yMe=YME[st.y.me], yTeam=YTEAM[st.y.team];
+    let yGot=0;
+    if(yTeam>=22000 && yMe>=1200) yGot+=5;
+    if(yTeam>=45000 && yMe>=2500) yGot+=10;
+    if(yMe>=12000) yGot+=5;
+    if(yMe>=25000) yGot+=10;
+    const yRank=YRANK[st.y.rank][1];
+    const perDay=st.days.map(d=>MAIN[d.cls][d.r].slice(0,d.tier).reduce((a,t)=>a+t[2],0));
+    const main=perDay.reduce((a,b)=>a+b,0);
+    const daily=st.days.reduce((a,d)=>a+(d.daily?5:0),0);
+    const rMe=RME[st.r.me][1], rTeam=RTEAM[st.r.team][1];
+    return {yGot,yRank,perDay,main,daily,rMe,rTeam,total:yGot+yRank+main+daily+rMe+rTeam};
+  }
+  const num = v => { const n=parseInt(String(v||"").replace(/[^\d]/g,""),10); return isNaN(n)?0:n; };
+  const clone = o => JSON.parse(JSON.stringify(o));
+
+  function nextBetter(list, idx){ // ranking lists: best first; find next index up with more medals
+    const cur=list[idx][1];
+    for(let j=idx-1;j>=0;j--) if(list[j][1]>cur) return j;
+    return -1;
+  }
+
+  function suggestions(st){
+    const base=calc(st).total, out=[];
+    const add=(mut,label,sub,who)=>{ const c=clone(st); mut(c); const g=calc(c).total-base; if(g>0) out.push({label,sub,who,g}); };
+    if(st.y.me<YME.length-1) add(c=>c.y.me++, `予選 個人貢献度 ${YME[st.y.me+1].toLocaleString()}`, "予選の個人報酬", "me");
+    if(st.y.team<YTEAM.length-1) add(c=>c.y.team++, `予選 騎空団貢献度 ${YTEAM[st.y.team+1].toLocaleString()}`, "予選の団報酬（個人条件つき）", "team");
+    const yr=nextBetter(YRANK,st.y.rank); if(yr>=0) add(c=>c.y.rank=yr, `予選騎空団ランキング ${YRANK[yr][0]}`, "予選の団順位", "team");
+    st.days.forEach((d,i)=>{
+      const tiers=MAIN[d.cls][d.r];
+      if(d.tier<tiers.length){ const t=tiers[d.tier];
+        add(c=>c.days[i].tier++, `${i+1}日目 ${tierLabel(t)}`, `${d.cls}クラス${d.r==="w"?"勝利":"敗北"}時の次の段階`, t[0]?"both":"me"); }
+      if(!d.daily) add(c=>c.days[i].daily=true, `${i+1}日目 個人40万`, "日別報酬", "me");
+    });
+    const rm=nextBetter(RME,st.r.me); if(rm>=0) add(c=>c.r.me=rm, `個人ランキング ${RME[rm][0]}`, "本戦終了時の個人順位", "me");
+    const rt=nextBetter(RTEAM,st.r.team); if(rt>=0) add(c=>c.r.team=rt, `総合騎空団ランキング ${RTEAM[rt][0]}`, "本戦終了時の団順位", "team");
+    const order={me:0,both:1,team:2};
+    out.sort((a,b)=>order[a.who]-order[b.who] || b.g-a.g);
+    return out;
+  }
+
+  function syncInputs(){
+    $("y-me").value=S.y.me; $("y-team").value=S.y.team; $("y-rank").value=S.y.rank;
+    $("r-me").value=S.r.me; $("r-team").value=S.r.team;
+    $("have").value=S.have; $("extra").value=S.extra;
+    S.days.forEach((d,i)=>{ $(`d${i}-cls`).value=d.cls; $(`d${i}-daily`).checked=d.daily; fillTiers(i,S); });
+    EX.forEach(([id])=>{ $("pk-"+id).checked=S.picks.includes(id); });
+  }
+
+  function render(){
+    const r=calc(S);
+    S.days.forEach((d,i)=>{
+      document.querySelectorAll(`.seg button[data-day="${i}"]`).forEach(b=>b.setAttribute("aria-pressed", b.dataset.r===d.r?"true":"false"));
+      $(`d${i}-got`).textContent = r.perDay[i] + (d.daily?"+5":"");
+    });
+    $("s-yosen").textContent=(r.yGot+r.yRank)+"個";
+    $("s-honsen").textContent=(r.main+r.daily)+"個";
+    $("s-rank").textContent=(r.rMe+r.rTeam)+"個";
+    $("t-total").textContent=r.total; $("m-total").textContent=r.total;
+    $("t-meter").style.width=Math.min(100,r.total/MAX*100)+"%";
+    const rows=[["予選 貢献度報酬",r.yGot],["予選 騎空団ランキング",r.yRank],["本戦 勝敗報酬（4日間）",r.main],["本戦 日別報酬",r.daily],["個人ランキング",r.rMe],["総合騎空団ランキング",r.rTeam]];
+    $("t-break").innerHTML=rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("")+`<div class="sep"></div><dt><b>合計</b></dt><dd>${r.total}</dd>`;
+
+    // goal
+    const have=num(S.have), extra=num(S.extra);
+    const target=EX.filter(([id])=>S.picks.includes(id)).reduce((a,x)=>a+x[2],0)+extra;
+    const after=have+r.total, short=target-after;
+    const g=$("goal");
+    if(!target){
+      g.className="goal none"; $("g-top").textContent="交換したいものを選んでください";
+      $("g-sub").textContent=`古戦場後の所持見込み ${after}個`; $("m-goal").textContent="";
+    } else if(short<=0){
+      g.className="goal ok"; $("g-top").textContent=`目標達成（${-short}個あまる）`;
+      $("g-sub").textContent=`必要 ${target}個 ／ 見込み ${after}個（所持${have}＋獲得${r.total}）`; $("m-goal").textContent=`目標${target}・達成`;
+    } else {
+      g.className="goal ng"; $("g-top").textContent=`あと ${short}個 足りない`;
+      $("g-sub").textContent=`必要 ${target}個 ／ 見込み ${after}個（所持${have}＋獲得${r.total}）`; $("m-goal").textContent=`目標${target}・あと${short}`;
+    }
+
+    // route
+    const list=suggestions(S), msg=$("route-msg"), route=$("route");
+    if(!target) msg.innerHTML="目標を選ぶと、足りない分をどこで取り返せるかがわかります。1段階上げたときに増える勲章の一覧です。";
+    else if(short<=0) msg.innerHTML="<b>今の見込みで目標に届いています。</b>余裕を増やしたい場合の候補です。";
+    else msg.innerHTML=`あと${short}個。個人で届くものから順に並べています。緑の枠の行まで達成すると目標に届きます。`;
+    let cum=0, reached=short<=0;
+    route.innerHTML = list.length ? list.map(s=>{
+      cum+=s.g; let cls="step";
+      if(!reached && short>0 && cum>=short){ cls+=" reach"; reached=true; }
+      else if(reached && short>0) cls+=" after";
+      const tag={me:["me","個人"],both:["both","団＋個人"],team:["team","団"]}[s.who];
+      return `<div class="${cls}"><span class="tag ${tag[0]}">${tag[1]}</span><span class="what">${s.label}<small>${s.sub}</small></span><span class="gain">+${s.g}</span><span class="cum">${short>0?"累計"+cum:""}</span></div>`;
+    }).join("") : `<p class="route-msg">すべての報酬が最大です。</p>`;
+    if(short>0 && !reached && list.length) msg.innerHTML+=" 今回の古戦場だけでは届かないので、次回以降と合わせて考えましょう。";
+
+    try{ localStorage.setItem("kunsho-calc-v2", JSON.stringify(S)); }catch(e){}
+  }
+
+  function touch(){ $("flag").hidden=true; }
+  function load(st){ S=clone(st); syncInputs(); render(); }
+
+  ["y-me","y-team","y-rank"].forEach(id=>$(id).addEventListener("change",e=>{ S.y[id.slice(2)]=+e.target.value; touch(); render(); }));
+  $("r-me").addEventListener("change",e=>{ S.r.me=+e.target.value; touch(); render(); });
+  $("r-team").addEventListener("change",e=>{ S.r.team=+e.target.value; touch(); render(); });
+  $("have").addEventListener("input",e=>{ S.have=e.target.value; touch(); render(); });
+  $("extra").addEventListener("input",e=>{ S.extra=e.target.value; touch(); render(); });
+  for(let i=0;i<4;i++){
+    $(`d${i}-cls`).addEventListener("change",e=>{ S.days[i].cls=e.target.value; fillTiers(i,S); touch(); render(); });
+    $(`d${i}-tier`).addEventListener("change",e=>{ S.days[i].tier=+e.target.value; touch(); render(); });
+    $(`d${i}-daily`).addEventListener("change",e=>{ S.days[i].daily=e.target.checked; touch(); render(); });
+  }
+  daysEl.addEventListener("click",e=>{ const b=e.target.closest(".seg button"); if(!b) return; const i=+b.dataset.day; if(S.days[i].r===b.dataset.r) return; S.days[i].r=b.dataset.r; fillTiers(i,S); touch(); render(); });
+  EX.forEach(([id])=>$("pk-"+id).addEventListener("change",e=>{ S.picks=S.picks.filter(x=>x!==id); if(e.target.checked) S.picks.push(id); touch(); render(); }));
+  $("btn-unpick").addEventListener("click",()=>{ S.picks=[]; S.extra=""; syncInputs(); touch(); render(); });
+  const allR = r => { S.days.forEach((d,i)=>{ d.r=r; fillTiers(i,S); }); touch(); render(); };
+  $("btn-allw").addEventListener("click",()=>allR("w"));
+  $("btn-alll").addEventListener("click",()=>allR("l"));
+  $("btn-alltop").addEventListener("click",()=>{ S.days.forEach((d,i)=>{ d.tier=MAIN[d.cls][d.r].length; d.daily=true; }); syncInputs(); touch(); render(); });
+  $("btn-copy").addEventListener("click",()=>{ for(let i=1;i<4;i++) S.days[i]=clone(S.days[0]); syncInputs(); touch(); render(); });
+  const keep = st => ({...clone(st), have:S.have, extra:S.extra, picks:S.picks.slice()});
+  $("btn-max").addEventListener("click",()=>{ touch(); load(keep(MAXSET)); });
+  $("btn-min").addEventListener("click",()=>{ touch(); load(keep(MINSET)); });
+  $("btn-reset").addEventListener("click",()=>{ touch(); load(EMPTY); });
+
+  let saved=null;
+  try{ saved=JSON.parse(localStorage.getItem("kunsho-calc-v2")||"null"); }catch(e){}
+  if(saved && saved.days && saved.days.length===4 && saved.y){ touch(); load(saved); } else load(SAMPLE);
+})();
+</script>
+</body>
+</html>
